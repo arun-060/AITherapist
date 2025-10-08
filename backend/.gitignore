@@ -44,4 +44,4 @@ local_settings.py
 Thumbs.db
 .env.example
 
-theapy_vector_db/
+therapy_vector_db/
