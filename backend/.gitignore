@@ -43,3 +43,5 @@ local_settings.py
 .DS_Store
 Thumbs.db
 .env.example
+
+theapy_vector_db/

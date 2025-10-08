@@ -22,35 +22,55 @@ class GeminiTherapist:
 
         # Initialize Gemini API
         genai.configure(api_key=gemini_api_key)
-        self.model = genai.GenerativeModel(self.model_name)
+        
+        # Configure the model with generation settings
+        generation_config = {
+            "temperature": 0.7,
+            "top_p": 0.8,
+            "top_k": 40
+        }
+        self.model = genai.GenerativeModel(
+            model_name=self.model_name,
+            generation_config=generation_config
+        )
         
         # Start chat
-        self.chat = self.model.start_chat(history=[])
+        self.chat_session = self.model.start_chat(history=[])
 
     def _build_system_prompt(self, context: str = "") -> str:
         """Build system prompt with RAG context"""
-        return f"""You are a compassionate and empathetic AI therapist specializing in mental health support.
+        base_prompt = """You are a compassionate and empathetic AI therapist. Your goal is to provide supportive, non-judgmental responses while maintaining professional boundaries. Focus on:
 
-Your responsibilities:
-- Provide emotional support and active listening
-- Use evidence-based therapeutic techniques
-- Ask clarifying questions when needed
-- Validate feelings and emotions
-- Suggest healthy coping strategies
-- Maintain a warm, non-judgmental tone
-- Prioritize user safety and wellbeing
+            1. Active Listening & Validation
+            2. Emotional Support & Understanding
+            3. Gentle Guidance & Coping Strategies
+            4. Safety & Professional Referral when needed
 
-IMPORTANT SAFETY GUIDELINES:
-- If user expresses suicidal thoughts, immediately encourage professional help
-- Provide crisis hotline numbers when appropriate
-- Never provide medical diagnoses
-- Always recommend professional help for serious issues
+            Guidelines:
+            * Use a warm, empathetic tone
+            * Ask clarifying questions
+            * Validate emotions and experiences
+            * Suggest practical coping strategies
+            * Maintain appropriate boundaries
 
-Use the following examples from real therapy conversations to guide your responses:
-{context}
+            Safety Protocol:
+            * For suicidal thoughts -> Immediate professional help
+            * For serious mental health -> Recommend therapy
+            * No medical diagnoses
+            * No prescriptions or medical advice
 
-Recent conversation context:
-{self._format_conversation_history()}"""
+            Reference Examples:
+        """
+
+        if context:
+            base_prompt += f"\n{context}"
+        
+        if self.conversation_history:
+            base_prompt += f"\n\nConversation History:\n{self._format_conversation_history()}"
+            
+        base_prompt += "\n\nRespond as a compassionate therapist while following all guidelines above."
+        
+        return base_prompt
 
     def _format_conversation_history(self) -> str:
         """Format conversation history for context"""
@@ -84,8 +104,9 @@ Recent conversation context:
                         sources_used.append(result['metadata']['source'])
                     context = "\n\n".join(context_parts)
 
-            # Update system prompt with new context
+            # Build the complete message with context and guidelines
             system_prompt = self._build_system_prompt(context)
+            complete_message = f"{system_prompt}\n\nUser: {user_message}"
             
             # Add user message to history
             self.conversation_history.append({
@@ -94,11 +115,18 @@ Recent conversation context:
                 "timestamp": datetime.now()
             })
 
-            # Generate response
-            response = await self.chat.send_message(
-                user_message,
-                system_prompt=system_prompt
-            )
+            try:
+                # Generate response
+                response = self.chat_session.send_message(complete_message)
+            except Exception as e:
+                self.logger.error(f"Error from Gemini API: {str(e)}")
+                # Handle common API errors
+                if "API key" in str(e).lower():
+                    raise Exception("Invalid or missing API key. Please check your configuration.")
+                elif "rate limit" in str(e).lower():
+                    raise Exception("API rate limit exceeded. Please try again later.")
+                else:
+                    raise Exception(f"Error from Gemini API: {str(e)}")
 
             # Add assistant response to history
             assistant_message = {
@@ -125,7 +153,7 @@ Recent conversation context:
     def reset_conversation(self) -> None:
         """Clear conversation history"""
         self.conversation_history = []
-        self.chat = self.model.start_chat(history=[])
+        self.chat_session = self.model.start_chat(history=[])
 
     async def get_conversation_summary(self) -> str:
         """Generate a summary of the conversation"""
@@ -133,19 +161,16 @@ Recent conversation context:
             return "No conversation to summarize."
 
         try:
-            summary_prompt = f"""Please provide a concise summary of the following therapy conversation, highlighting:
-- Main topics discussed
-- User's key concerns
-- Your therapeutic approaches used
-- Any action items or recommendations given
-
-Conversation:
-{self._format_conversation_history()}"""
-
-            response = await self.chat.send_message(
-                summary_prompt,
-                system_prompt="You are analyzing a therapy conversation to create a professional summary."
+            summary_prompt = (
+                "Please provide a concise summary of the following therapy conversation, highlighting:\n"
+                "1. Main topics discussed\n"
+                "2. User's key concerns\n"
+                "3. Your therapeutic approaches used\n"
+                "4. Any action items or recommendations given\n\n"
+                f"Conversation:\n{self._format_conversation_history()}"
             )
+
+            response =  self.chat_session.send_message(summary_prompt)
 
             return response.text
 

@@ -129,14 +129,16 @@ export default function SessionPage() {
         }),
       });
       
-      if (!response.ok) {
-        throw new Error('Failed to get AI response');
-      }
-      
       const data = await response.json();
       
-      // Update the detected emotion
-      setDetectedEmotion(data.detectedEmotion);
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to get AI response');
+      }
+      
+      // Update the detected emotion if provided
+      if (data.detectedEmotion) {
+        setDetectedEmotion(data.detectedEmotion);
+      }
       
       // Add AI response to messages with timestamp
       setMessages(prev => [...prev, { 
@@ -148,7 +150,7 @@ export default function SessionPage() {
     } catch (error) {
       console.error('Error getting AI response:', error);
       setMessages(prev => [...prev, { 
-        text: 'Sorry, I encountered an issue. Please try again.', 
+        text: 'Sorry, I encountered an issue. Please try again. Error: ' + (error as Error).message, 
         sender: 'ai' 
       }]);
     }

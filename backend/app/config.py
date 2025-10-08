@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     # Paths and Models
     VECTOR_DB_PATH: str = "./therapy_vector_db"
     EMBEDDING_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"
-    GEMINI_MODEL: str = "gemini-1.5-flash"
+    GEMINI_MODEL: str = "gemini-2.5-pro"
 
     # Application Settings
     MAX_CONVERSATION_HISTORY: int = 10

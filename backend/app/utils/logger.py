@@ -5,7 +5,7 @@ from datetime import datetime
 from logging.handlers import RotatingFileHandler
 from typing import Optional
 
-from .config import settings
+from ..config import settings
 
 # Create logs directory if it doesn't exist
 LOGS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "logs")

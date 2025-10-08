@@ -2,8 +2,8 @@ from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional
 
-from .config import settings
-from .models import (
+from app.config import settings
+from app.models import (
     ChatRequest,
     ChatResponse,
     SessionCreate,
@@ -13,9 +13,9 @@ from .models import (
     SummaryResponse,
     RAGStats
 )
-from .rag_system import TherapyRAG
-from .session_manager import SessionManager
-from .utils.logger import api_logger
+from app.rag_system import TherapyRAG
+from app.session_manager import SessionManager
+from app.utils.logger import api_logger
 
 # Initialize FastAPI app
 app = FastAPI(title="AI Therapist API")
@@ -144,7 +144,17 @@ async def get_rag_stats():
 @app.on_event("startup")
 async def startup_event():
     logger.info("Starting AI Therapist API")
-    # TODO: Initialize background tasks (e.g., session cleanup)
+    
+    # Check if Gemini API key is configured
+    if not settings.GEMINI_API_KEY:
+        logger.error("GEMINI_API_KEY is not set. Please add it to your .env file.")
+        raise Exception("GEMINI_API_KEY is not configured")
+    
+    # Verify Gemini API key format
+    if not settings.GEMINI_API_KEY.startswith("AI") and len(settings.GEMINI_API_KEY) < 10:
+        logger.warning("GEMINI_API_KEY format looks incorrect. Please verify your API key.")
+    
+    logger.info("API configuration verified")
 
 @app.on_event("shutdown")
 async def shutdown_event():

@@ -8,8 +8,8 @@ from datasets import load_dataset
 from sentence_transformers import SentenceTransformer
 from tqdm import tqdm
 
-from .utils.logger import rag_logger
-from .config import settings
+from app.utils.logger import rag_logger
+from app.config import settings
 
 class TherapyDatasetProcessor:
     """Handles processing and standardization of various therapy datasets"""
@@ -174,7 +174,7 @@ class TherapyRAG:
             self.logger.error(f"Error in retrieve: {str(e)}")
             return []
 
-    def get_context_for_llm(self, query: str, n_results: int = None) -> str:
+    async def get_context_for_llm(self, query: str, n_results: int = None) -> str:
         """Format retrieved context for LLM prompting"""
         results = await self.retrieve(query, n_results)
         if not results:
